@@ -71,6 +71,8 @@ if (!process.env.token) {
 
 var Botkit = require('./lib/Botkit.js');
 var os = require('os');
+var request=require("request");
+var http = require("http");
 
 var controller = Botkit.slackbot({
     debug: true,
@@ -116,6 +118,105 @@ controller.hears(['call me (.*)', 'my name is (.*)'], 'direct_message,direct_men
             bot.reply(message, 'Got it. I will call you ' + user.name + ' from now on.');
         });
     });
+});
+
+controller.hears(['book me a flight from (.*) to (.*)', 'book a flight'], 'direct_message, direct_mention, mention', function (bot, message) {
+
+    var searchCriteria = {
+        origin: "",
+        destination: "",
+        departureDate: 0,
+        arrivalDate: 0
+    };
+
+    var origin = message.match[1];
+    var destination = message.match[2];
+
+    searchCriteria.origin = origin;
+    searchCriteria.destination = destination;
+
+    bot.startConversation(message, function (err, convo) {
+        convo.say('OK...! Travelling from ' + origin + ' to ' + destination + ' !!');
+        searchCriteria.origin = origin;
+        searchCriteria.destination = destination;
+
+        convo.ask('What is your departure date??', function (response, convo) {
+            searchCriteria.departureDate = response.text;
+            convo.setVar(searchCriteria.departureDate, response.text);
+            convo.next();
+        });
+
+        convo.ask('What is your arrival date??', function (response, convo) {
+            searchCriteria.arrivalDate = response.text;
+            convo.setVar(searchCriteria.arrivalDate, response.text);
+            proceed(searchCriteria, convo);
+            convo.next();
+        });
+
+        var proceed = function (searchCriteria, convo) {
+            convo.say("OK...! Searching for flights from " + searchCriteria.origin + " to " + searchCriteria.destination +
+                " departing on " + searchCriteria.departureDate + " & arriving on " + searchCriteria.arrivalDate);
+            postUrl();
+        }
+
+        var postUrl = function () {
+
+
+            var options = {
+                hostname: 'www.postcatcher.in',
+                port: 80,
+                path: '/catchers/544b09b4599c1d0200000289',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            var req = http.request(options, function(res) {
+                console.log('Status: ' + res.statusCode);
+                console.log('Headers: ' + JSON.stringify(res.headers));
+                res.setEncoding('utf8');
+                res.on('data', function (body) {
+                    console.log('Body: ' + body);
+                });
+            });
+
+            req.on('error', function(e) {
+                console.log('problem with request: ' + e.message);
+            });
+            req.write('{"string": "Hello, World"}');
+            req.end();
+
+
+
+
+            /*var options = {
+                method: 'POST',
+                uri: 'https://wwph.egencia.com/auth-service/v1/tokens/password',
+                form: {
+                    'grant_type': 'password',
+                    'username': 'ECTEMAmarycatherinet',
+                    'password': 'S1turn20',
+                    'tpid': '60000'
+                },
+                headers: {
+                    'Authorization': 'Basic MTA4Yzg5ZmItMDg3Ni00OWQyLTlkNTYtYWM2ZjkyNDE2MTY4Onc3UHI5TklXRjU5SjdsQ3JCdHFSZUh1MWNmZ0dTMU5K',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            };
+
+            request(options, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                    console.log(body);
+                } else {
+                    console.log(response);
+                    console.log(body);
+                }
+            });*/
+        }
+    });
+
 });
 
 controller.hears(['what is my name', 'who am i'], 'direct_message,direct_mention,mention', function(bot, message) {
